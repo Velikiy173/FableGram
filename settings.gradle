@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "FableGram"
-include(":app")
+rootProject.name = 'FableGram'
+include ':app'
