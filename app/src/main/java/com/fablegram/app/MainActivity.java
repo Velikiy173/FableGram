@@ -1,11 +1,9 @@
-
 package com.fablegram.app;
 
 import android.app.*;
 import android.os.*;
 import android.content.*;
-import android.graphics.Color;
-import android.graphics.Typeface;
+import android.graphics.*;
 import android.graphics.drawable.*;
 import android.net.Uri;
 import android.view.*;
@@ -16,9 +14,10 @@ import java.util.*;
 
 public class MainActivity extends Activity {
 
-    LinearLayout root, content;
+    LinearLayout root;
     int theme = 0;
     int currentChat = -1;
+    boolean english = false;
 
     String[] names = {
         "FableGram Support",
@@ -28,177 +27,227 @@ public class MainActivity extends Activity {
         "Иван"
     };
 
-    String[] messages = {
-        "Добро пожаловать!",
-        "Привет 👋",
-        "Как дела?",
-        "Обновление доступно",
-        "Увидимся!"
+    String[] previews = {
+        "Добро пожаловать в FableGram!",
+        "Привет!",
+        "Заходите в чат",
+        "Новости приложения",
+        "Как дела?"
     };
 
-    String[] emojis = {"🛡️", "👤", "👥", "⭐", "🙂"};
-
     HashMap<Integer, String> wallpapers = new HashMap<>();
+    HashMap<Integer, ArrayList<String>> messages = new HashMap<>();
 
-    int bg, fg, secondary, accent;
+    int[] builtInColors = {
+        0xFFE8EAF6,
+        0xFFD7F5E8,
+        0xFFFFE8D6,
+        0xFFE1F0FF
+    };
+
+    int bg, fg, accent, secondary;
 
     @Override
     public void onCreate(Bundle b) {
         super.onCreate(b);
 
-        theme = getPreferences(0).getInt("theme", 0);
+        getWindow().setSoftInputMode(
+            WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+        );
+
+        SharedPreferences p = getSharedPreferences("fable", MODE_PRIVATE);
+        theme = p.getInt("theme", 0);
+        english = p.getBoolean("english", false);
 
         for (int i = 0; i < names.length; i++) {
-            String saved = getPreferences(0).getString("wall_" + i, "");
-            if (!saved.isEmpty()) wallpapers.put(i, saved);
+            messages.put(i, new ArrayList<String>());
+            messages.get(i).add(previews[i]);
         }
 
+        colors();
         showHome();
+    }
+
+    void save() {
+        getSharedPreferences("fable", MODE_PRIVATE)
+            .edit()
+            .putInt("theme", theme)
+            .putBoolean("english", english)
+            .apply();
+    }
+
+    String tr(String ru, String en) {
+        return english ? en : ru;
     }
 
     void colors() {
         if (theme == 1) {
-            bg = Color.rgb(24, 25, 28);
-            fg = Color.WHITE;
-            secondary = Color.LTGRAY;
-            accent = Color.rgb(65, 145, 230);
-        } else if (theme == 2) {
-            bg = Color.rgb(235, 242, 255);
-            fg = Color.rgb(30, 65, 130);
-            secondary = Color.rgb(90, 110, 145);
-            accent = Color.rgb(70, 115, 220);
+            bg = 0xFF101318;
+            fg = 0xFFFFFFFF;
+            secondary = 0xFF252B34;
+            accent = 0xFF6C9EFF;
         } else {
-            bg = Color.WHITE;
-            fg = Color.rgb(25, 35, 45);
-            secondary = Color.GRAY;
-            accent = Color.rgb(45, 145, 220);
+            bg = 0xFFF5F6FA;
+            fg = 0xFF17191F;
+            secondary = 0xFFFFFFFF;
+            accent = 0xFF5688E8;
         }
     }
 
-    TextView text(String s, int size, int color) {
-        TextView t = new TextView(this);
-        t.setText(s);
-        t.setTextSize(size);
-        t.setTextColor(color);
-        return t;
+    int dp(float v) {
+        return (int)(v * getResources().getDisplayMetrics().density);
     }
 
     GradientDrawable shape(int color, int radius) {
         GradientDrawable d = new GradientDrawable();
         d.setColor(color);
-        d.setCornerRadius(radius);
+        d.setCornerRadius(dp(radius));
         return d;
+    }
+
+    TextView text(String value, int size, int color) {
+        TextView t = new TextView(this);
+        t.setText(value);
+        t.setTextSize(size);
+        t.setTextColor(color);
+        return t;
+    }
+
+    TextView button(String value, Runnable action) {
+        TextView t = text(value, 16, fg);
+        t.setGravity(Gravity.CENTER);
+        t.setPadding(dp(14), dp(12), dp(14), dp(12));
+        t.setBackground(shape(secondary, 16));
+        t.setOnClickListener(v -> action.run());
+        return t;
+    }
+
+    LinearLayout column() {
+        LinearLayout l = new LinearLayout(this);
+        l.setOrientation(LinearLayout.VERTICAL);
+        return l;
+    }
+
+    LinearLayout row() {
+        LinearLayout l = new LinearLayout(this);
+        l.setOrientation(LinearLayout.HORIZONTAL);
+        l.setGravity(Gravity.CENTER_VERTICAL);
+        return l;
     }
 
     void base() {
         colors();
-        root = new LinearLayout(this);
-        root.setOrientation(1);
+        root = column();
         root.setBackgroundColor(bg);
         setContentView(root);
     }
 
     void toolbar(String title, boolean back) {
-        LinearLayout bar = new LinearLayout(this);
-        bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setPadding(16, 12, 16, 12);
-        bar.setBackgroundColor(accent);
+        LinearLayout bar = row();
+        bar.setPadding(dp(14), dp(12), dp(14), dp(12));
 
         if (back) {
-            TextView b = text("‹", 34, Color.WHITE);
-            bar.addView(b);
-            b.setPadding(0, 0, 18, 0);
+            TextView b = text("‹", 32, fg);
+            b.setPadding(dp(8), 0, dp(18), 0);
             b.setOnClickListener(v -> showHome());
+            bar.addView(b);
         }
 
-        TextView name = text(title, 21, Color.WHITE);
+        TextView name = text(title, 22, fg);
         name.setTypeface(null, Typeface.BOLD);
-        bar.addView(name, new LinearLayout.LayoutParams(0, -2, 1));
 
+        bar.addView(name, new LinearLayout.LayoutParams(0, -2, 1));
         root.addView(bar);
     }
 
     void showHome() {
         currentChat = -1;
         base();
-        toolbar("FableGram", false);
 
-        LinearLayout actions = new LinearLayout(this);
-        actions.setPadding(12, 10, 12, 10);
-        actions.setGravity(Gravity.CENTER_VERTICAL);
+        toolbar("FableGram", false);
 
         EditText search = new EditText(this);
         search.setSingleLine(true);
         search.setTextSize(15);
-        search.setHint("Поиск");
-        search.setBackground(shape(theme == 1 ?
-            Color.rgb(45, 46, 50) : Color.rgb(240, 243, 247), 30));
-        search.setPadding(16, 8, 16, 8);
-        actions.addView(search, new LinearLayout.LayoutParams(0, 48, 1));
+        search.setHint(tr("Поиск", "Search"));
+        search.setPadding(dp(16), 0, dp(16), 0);
+        search.setBackground(shape(secondary, 18));
 
-        TextView mode = text(" ◐ ", 25, fg);
-        actions.addView(mode);
-        mode.setOnClickListener(v -> {
-            theme = (theme + 1) % 3;
-            getPreferences(0).edit().putInt("theme", theme).apply();
-            showHome();
-        });
-
-        root.addView(actions);
+        LinearLayout.LayoutParams sp =
+            new LinearLayout.LayoutParams(-1, dp(48));
+        sp.setMargins(dp(14), dp(5), dp(14), dp(12));
+        root.addView(search, sp);
 
         ScrollView scroll = new ScrollView(this);
-        content = new LinearLayout(this);
-        content.setOrientation(1);
-        scroll.addView(content);
-        root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+        LinearLayout list = column();
 
         for (int i = 0; i < names.length; i++) {
-            final int id = i;
+            final int index = i;
 
-            LinearLayout item = new LinearLayout(this);
-            item.setGravity(Gravity.CENTER_VERTICAL);
-            item.setPadding(14, 12, 14, 12);
+            LinearLayout item = row();
+            item.setPadding(dp(14), dp(13), dp(14), dp(13));
 
-            TextView avatar = text(emojis[i], 25, fg);
+            TextView avatar = text(
+                names[i].substring(0, 1).toUpperCase(),
+                23, Color.WHITE
+            );
             avatar.setGravity(Gravity.CENTER);
-            avatar.setBackground(shape(theme == 1 ?
-                Color.rgb(55, 65, 85) : Color.rgb(225, 238, 255), 60));
-            item.addView(avatar, new LinearLayout.LayoutParams(52, 52));
+            avatar.setBackground(shape(accent, 50));
 
-            LinearLayout info = new LinearLayout(this);
-            info.setOrientation(1);
-            info.setPadding(13, 0, 0, 0);
+            LinearLayout.LayoutParams ap =
+                new LinearLayout.LayoutParams(dp(50), dp(50));
+            ap.setMargins(0, 0, dp(13), 0);
+            item.addView(avatar, ap);
+
+            LinearLayout info = column();
 
             TextView n = text(names[i], 17, fg);
             n.setTypeface(null, Typeface.BOLD);
-            info.addView(n);
 
-            TextView m = text(messages[i], 14, secondary);
-            info.addView(m);
+            TextView preview = text(previews[i], 13, 0xFF888888);
+
+            info.addView(n);
+            info.addView(preview);
 
             item.addView(info, new LinearLayout.LayoutParams(0, -2, 1));
-
-            content.addView(item);
-            View line = new View(this);
-            line.setBackgroundColor(theme == 1 ?
-                Color.rgb(55, 55, 60) : Color.rgb(235, 235, 235));
-            content.addView(line, new LinearLayout.LayoutParams(-1, 1));
-
-            item.setOnClickListener(v -> showChat(id));
+            item.setOnClickListener(v -> showChat(index));
+            list.addView(item);
         }
 
-        LinearLayout bottom = new LinearLayout(this);
-        bottom.setGravity(Gravity.CENTER);
-        bottom.setPadding(8, 12, 8, 12);
-        bottom.setBackgroundColor(bg);
+        scroll.addView(list);
+        root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
 
-        String[] tabs = {"Чаты", "Контакты", "Звонки", "Настройки"};
-        for (String tab : tabs) {
-            TextView t = text(tab, 13, accent);
-            t.setGravity(Gravity.CENTER);
-            bottom.addView(t, new LinearLayout.LayoutParams(0, 42, 1));
-            t.setOnClickListener(v ->
-                Toast.makeText(this, tab, Toast.LENGTH_SHORT).show());
+        LinearLayout bottom = row();
+        bottom.setPadding(dp(8), dp(10), dp(8), dp(10));
+        bottom.setBackgroundColor(secondary);
+
+        String[] tabs = {
+            tr("Чаты", "Chats"),
+            tr("Звонки", "Calls"),
+            tr("Контакты", "Contacts"),
+            tr("Настройки", "Settings")
+        };
+
+        for (int i = 0; i < tabs.length; i++) {
+            final int index = i;
+            TextView tab = text(tabs[i], 12, fg);
+            tab.setGravity(Gravity.CENTER);
+            tab.setPadding(dp(4), dp(8), dp(4), dp(8));
+
+            bottom.addView(tab, new LinearLayout.LayoutParams(0, -2, 1));
+
+            tab.setOnClickListener(v -> {
+                if (index == 3) {
+                    showSettings();
+                } else {
+                    Toast.makeText(
+                        this,
+                        tr("Раздел пока в разработке",
+                           "Section is under development"),
+                        Toast.LENGTH_SHORT
+                    ).show();
+                }
+            });
         }
 
         root.addView(bottom);
@@ -207,106 +256,222 @@ public class MainActivity extends Activity {
     void showChat(int id) {
         currentChat = id;
         base();
+
         toolbar(names[id], true);
 
         FrameLayout frame = new FrameLayout(this);
-        root.addView(frame, new LinearLayout.LayoutParams(-1, 0, 1));
 
         ImageView wallpaper = new ImageView(this);
         wallpaper.setScaleType(ImageView.ScaleType.CENTER_CROP);
-
-        String uri = wallpapers.get(id);
-        if (uri != null) {
-            try {
-                wallpaper.setImageURI(Uri.parse(uri));
-            } catch (Exception ignored) {}
-        } else {
-            wallpaper.setBackgroundColor(theme == 1 ?
-                Color.rgb(35, 38, 43) : Color.rgb(225, 237, 245));
-        }
-
         frame.addView(wallpaper, new FrameLayout.LayoutParams(-1, -1));
 
-        LinearLayout messages = new LinearLayout(this);
-        messages.setOrientation(1);
-        messages.setPadding(12, 18, 12, 12);
+        applyWallpaper(wallpaper, id);
 
-        TextView welcome = text(messagesFor(id), 16, fg);
-        welcome.setPadding(14, 12, 14, 12);
-        welcome.setBackground(shape(theme == 1 ?
-            Color.rgb(55, 58, 65) : Color.WHITE, 18));
-        messages.addView(welcome);
+        ScrollView scroll = new ScrollView(this);
+        LinearLayout messageList = column();
+        messageList.setPadding(dp(12), dp(12), dp(12), dp(12));
 
-        FrameLayout.LayoutParams mp = new FrameLayout.LayoutParams(
-            -1, -1);
-        frame.addView(messages, mp);
+        ArrayList<String> chatMessages = messages.get(id);
 
-        LinearLayout composer = new LinearLayout(this);
-        composer.setGravity(Gravity.CENTER_VERTICAL);
-        composer.setPadding(8, 8, 8, 8);
-        composer.setBackgroundColor(bg);
+        for (String message : chatMessages) {
+            TextView bubble = text(message, 16, fg);
+            bubble.setPadding(dp(13), dp(10), dp(13), dp(10));
+            bubble.setBackground(shape(secondary, 16));
 
-        Button photo = new Button(this);
-        photo.setText("Обои");
-        composer.addView(photo);
-        photo.setOnClickListener(v -> chooseWallpaper());
+            LinearLayout.LayoutParams mp =
+                new LinearLayout.LayoutParams(-2, -2);
+            mp.setMargins(0, dp(5), 0, dp(5));
+
+            messageList.addView(bubble, mp);
+        }
+
+        scroll.addView(messageList);
+        frame.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
+
+        root.addView(frame, new LinearLayout.LayoutParams(-1, 0, 1));
+
+        LinearLayout composer = row();
+        composer.setPadding(dp(8), dp(8), dp(8), dp(8));
+        composer.setBackgroundColor(secondary);
+
+        TextView wallpaperButton = text("▧", 24, accent);
+        wallpaperButton.setGravity(Gravity.CENTER);
+        wallpaperButton.setPadding(dp(8), dp(8), dp(8), dp(8));
+        wallpaperButton.setOnClickListener(v -> wallpaperMenu());
+        composer.addView(wallpaperButton);
 
         EditText input = new EditText(this);
         input.setSingleLine(true);
-        input.setHint("Сообщение...");
-        composer.addView(input, new LinearLayout.LayoutParams(0, 52, 1));
+        input.setTextSize(16);
+        input.setHint(tr("Сообщение...", "Message..."));
+        input.setTextColor(fg);
+        input.setHintTextColor(0xFF888888);
+        input.setPadding(dp(12), 0, dp(12), 0);
+        input.setBackground(shape(bg, 24));
 
-        Button send = new Button(this);
-        send.setText("➤");
-        composer.addView(send);
+        composer.addView(input, new LinearLayout.LayoutParams(0, dp(46), 1));
+
+        TextView send = text("➤", 23, accent);
+        send.setGravity(Gravity.CENTER);
+        send.setPadding(dp(12), dp(8), dp(12), dp(8));
 
         send.setOnClickListener(v -> {
             String value = input.getText().toString().trim();
-            if (!value.isEmpty()) {
-                TextView bubble = text(value, 16, fg);
-                bubble.setPadding(14, 12, 14, 12);
-                bubble.setBackground(shape(theme == 1 ?
-                    Color.rgb(55, 85, 115) : Color.rgb(205, 240, 215), 18));
-                messages.addView(bubble);
-                input.setText("");
-            }
+
+            if (value.isEmpty()) return;
+
+            messages.get(id).add(value);
+            input.setText("");
+            showChat(id);
         });
 
+        composer.addView(send);
         root.addView(composer);
+
+        input.setOnEditorActionListener((v, actionId, event) -> {
+            send.performClick();
+            return true;
+        });
+
+        scroll.post(() -> scroll.fullScroll(View.FOCUS_DOWN));
     }
 
-    String messagesFor(int id) {
-        return "Чат: " + names[id] +
-            "\n\nЭто демонстрационный экран FableGram.";
+    void applyWallpaper(ImageView image, int id) {
+        String value = wallpapers.get(id);
+
+        if (value == null) {
+            image.setBackgroundColor(
+                theme == 1 ? 0xFF202630 : 0xFFE8EDF5
+            );
+            return;
+        }
+
+        if (value.startsWith("color:")) {
+            try {
+                image.setBackgroundColor(
+                    Color.parseColor(value.substring(6))
+                );
+            } catch (Exception e) {
+                image.setBackgroundColor(bg);
+            }
+            return;
+        }
+
+        try {
+            image.setImageURI(Uri.parse(value));
+        } catch (Exception e) {
+            image.setBackgroundColor(bg);
+        }
     }
 
-    void chooseWallpaper() {
-        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-        intent.setType("image/*");
-        intent.addCategory(Intent.CATEGORY_OPENABLE);
-        startActivityForResult(intent, 100);
+    void wallpaperMenu() {
+        String[] options = {
+            tr("Выбрать из галереи", "Choose from gallery"),
+            tr("Встроенные обои", "Built-in wallpapers"),
+            tr("Убрать обои", "Remove wallpaper")
+        };
+
+        new AlertDialog.Builder(this)
+            .setTitle(tr("Обои чата", "Chat wallpaper"))
+            .setItems(options, (d, which) -> {
+                if (which == 0) {
+                    Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                    intent.setType("image/*");
+                    intent.addCategory(Intent.CATEGORY_OPENABLE);
+                    startActivityForResult(intent, 100);
+                } else if (which == 1) {
+                    chooseBuiltInWallpaper();
+                } else {
+                    wallpapers.remove(currentChat);
+                    showChat(currentChat);
+                }
+            })
+            .show();
+    }
+
+    void chooseBuiltInWallpaper() {
+        String[] options = {
+            tr("Светло-голубые", "Light blue"),
+            tr("Мятные", "Mint"),
+            tr("Персиковые", "Peach"),
+            tr("Голубые", "Blue")
+        };
+
+        new AlertDialog.Builder(this)
+            .setTitle(tr("Выбери фон", "Choose background"))
+            .setItems(options, (d, which) -> {
+                int color = builtInColors[which];
+                wallpapers.put(
+                    currentChat,
+                    "color:#" + Integer.toHexString(color)
+                );
+                showChat(currentChat);
+            })
+            .show();
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode,
-                                    Intent data) {
+    protected void onActivityResult(
+        int requestCode, int resultCode, Intent data
+    ) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (requestCode == 100 && resultCode == RESULT_OK &&
-            data != null && currentChat >= 0) {
+        if (requestCode == 100 &&
+            resultCode == RESULT_OK &&
+            data != null) {
+
             Uri uri = data.getData();
+
             try {
                 getContentResolver().takePersistableUriPermission(
-                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                );
             } catch (Exception ignored) {}
 
             wallpapers.put(currentChat, uri.toString());
-            getPreferences(0).edit()
-                .putString("wall_" + currentChat, uri.toString())
-                .apply();
-
             showChat(currentChat);
         }
     }
-}
 
+    void showSettings() {
+        base();
+        toolbar(tr("Настройки", "Settings"), true);
+
+        TextView themeTitle = text(
+            tr("Оформление", "Appearance"), 18, fg
+        );
+        themeTitle.setPadding(dp(16), dp(20), dp(16), dp(8));
+        root.addView(themeTitle);
+
+        root.addView(button(
+            theme == 1
+                ? tr("Тёмная тема ✓", "Dark theme ✓")
+                : tr("Светлая тема ✓", "Light theme ✓"),
+            () -> {
+                theme = theme == 1 ? 0 : 1;
+                save();
+                showSettings();
+            }
+        ));
+
+        TextView languageTitle = text(
+            tr("Язык", "Language"), 18, fg
+        );
+        languageTitle.setPadding(dp(16), dp(20), dp(16), dp(8));
+        root.addView(languageTitle);
+
+        root.addView(button(
+            english ? "English" : "Русский",
+            () -> {
+                english = !english;
+                save();
+                showSettings();
+            }
+        ));
+
+        TextView about = text("FableGram\nVersion 1.0", 15, 0xFF888888);
+        about.setPadding(dp(16), dp(30), dp(16), dp(10));
+        root.addView(about);
+    }
+            }
