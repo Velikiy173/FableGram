@@ -1,3 +1,5 @@
+cd ~/FableGramCloud
+cat > .github/workflows/build.yml <<'EOF'
 name: Build FableGram APK
 
 on:
@@ -34,6 +36,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
 
       - name: Setup Android SDK
         run: |
@@ -51,7 +54,17 @@ jobs:
       - name: Build APK
         working-directory: telegram-source
         run: |
-          ./gradlew :TMessagesProj_App:assembleAfatDebug --no-daemon --max-workers=2
+          for attempt in 1 2 3 4 5; do
+            if ./gradlew :TMessagesProj_App:assembleAfatDebug --no-daemon --max-workers=2; then
+              break
+            fi
+            if [ "$attempt" -eq 5 ]; then
+              exit 1
+            fi
+            echo "Build failed. Waiting before retry..."
+            sleep $((attempt * 30))
+          done
+
           APK="TMessagesProj_App/build/outputs/apk/afat/debug/app.apk"
           test -s "$APK"
           unzip -t "$APK"
@@ -64,3 +77,5 @@ jobs:
           path: telegram-source/TMessagesProj_App/build/outputs/apk/afat/debug/app.apk
           if-no-files-found: error
           compression-level: 0
+EOF
+
