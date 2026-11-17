@@ -50,12 +50,13 @@ jobs:
         working-directory: telegram-source
         run: |
           sed -i 's/^APP_PACKAGE=.*/APP_PACKAGE=com.fablegram.messenger/' gradle.properties
+          sed -i 's/org.telegram.messenger/com.fablegram.messenger/g' TMessagesProj_App/google-services.json
           sed -i 's|<string name="AppName">[^<]*</string>|<string name="AppName">FableGram</string>|' TMessagesProj/src/main/res/values/strings.xml
           sed -i 's|<string name="AppNameBeta">[^<]*</string>|<string name="AppNameBeta">FableGram Beta</string>|' TMessagesProj/src/main/res/values/strings.xml
 
       - name: Build APK
         working-directory: telegram-source
-        run: ./gradlew :TMessagesProj_App:assembleAfatDebug -x :TMessagesProj_App:processAfatDebugGoogleServices --no-daemon --max-workers=2
+        run: ./gradlew :TMessagesProj_App:assembleAfatDebug --no-daemon --max-workers=2
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
