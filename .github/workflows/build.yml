@@ -27,12 +27,9 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-          cache: gradle
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
-        with:
-          packages: 'platform-tools'
 
       - name: Install Android components
         run: |
@@ -42,17 +39,13 @@ jobs:
       - name: Apply FableGram branding
         working-directory: telegram-source
         run: |
-          if grep -q '^APP_PACKAGE=' gradle.properties; then
-            sed -i 's/^APP_PACKAGE=.*/APP_PACKAGE=com.fablegram.messenger/' gradle.properties
-          else
-            echo 'APP_PACKAGE=com.fablegram.messenger' >> gradle.properties
-          fi
+          sed -i 's/^APP_PACKAGE=.*/APP_PACKAGE=com.fablegram.messenger/' gradle.properties
           sed -i 's|<string name="AppName">[^<]*</string>|<string name="AppName">FableGram</string>|' TMessagesProj/src/main/res/values/strings.xml
           sed -i 's|<string name="AppNameBeta">[^<]*</string>|<string name="AppNameBeta">FableGram Beta</string>|' TMessagesProj/src/main/res/values/strings.xml
 
       - name: Build APK
         working-directory: telegram-source
-        run: ./gradlew :TMessagesProj_App:assembleAfatDebug --no-daemon --max-workers=2
+        run: ./gradlew :TMessagesProj_App:assembleAfatDebug -x :TMessagesProj_App:processAfatDebugGoogleServices --no-daemon --max-workers=2
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -60,4 +53,3 @@ jobs:
           name: FableGram-APK
           path: telegram-source/TMessagesProj_App/build/outputs/apk/afat/debug/app.apk
           if-no-files-found: error
-
