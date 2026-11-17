@@ -1,61 +1,63 @@
 name: Build FableGram APK
 
 on:
-workflow_dispatch:
-push:
-branches: [ main ]
+  workflow_dispatch:
+  push:
+    branches:
+      - main
 
 permissions:
-contents: read
+  contents: read
 
 jobs:
-build:
-runs-on: ubuntu-24.04
+  build:
+    runs-on: ubuntu-24.04
 
-steps:
-  - name: Checkout FableGram
-    uses: actions/checkout@v4
+    steps:
+      - name: Checkout FableGram
+        uses: actions/checkout@v4
 
-  - name: Download Telegram source
-    run: |
-      git clone --filter=blob:none https://github.com/TelegramMessenger/Telegram.git telegram-source
-      git -C telegram-source checkout 21f7d109da6ab3506c9e9577f98c6a38771ab335
-      git -C telegram-source submodule update --init --recursive --depth 1
+      - name: Download Telegram source
+        run: |
+          git clone --filter=blob:none https://github.com/TelegramMessenger/Telegram.git telegram-source
+          git -C telegram-source checkout 21f7d109da6ab3506c9e9577f98c6a38771ab335
+          git -C telegram-source submodule update --init --recursive --depth 1
 
-  - name: Copy FableGram files
-    run: |
-      cp TMessagesProj/src/main/java/org/telegram/ui/FableGramDemoActivity.java telegram-source/TMessagesProj/src/main/java/org/telegram/ui/
-      cp TMessagesProj/src/main/java/org/telegram/ui/IntroActivity.java telegram-source/TMessagesProj/src/main/java/org/telegram/ui/
-      cp TMessagesProj/src/main/AndroidManifest.xml telegram-source/TMessagesProj/src/main/
+      - name: Copy FableGram files
+        run: |
+          cp TMessagesProj/src/main/java/org/telegram/ui/FableGramDemoActivity.java telegram-source/TMessagesProj/src/main/java/org/telegram/ui/
+          cp TMessagesProj/src/main/java/org/telegram/ui/IntroActivity.java telegram-source/TMessagesProj/src/main/java/org/telegram/ui/
+          cp TMessagesProj/src/main/AndroidManifest.xml telegram-source/TMessagesProj/src/main/
 
-  - name: Setup Java
-    uses: actions/setup-java@v4
-    with:
-      distribution: temurin
-      java-version: '17'
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
 
-  - name: Install Android SDK
-    run: |
-      sudo apt-get update
-      sudo apt-get install -y android-sdk
-      yes | sdkmanager --licenses || true
-      sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "cmake;3.22.1" "ndk;27.2.12479018"
+      - name: Setup Android SDK
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-35" "build-tools;35.0.0" "cmake;3.22.1" "ndk;27.2.12479018"
 
-  - name: Apply FableGram branding
-    working-directory: telegram-source
-    run: |
-      sed -i 's/^APP_PACKAGE=.*/APP_PACKAGE=com.fablegram.messenger/' gradle.properties
-      sed -i 's/org.telegram.messenger/com.fablegram.messenger/g' TMessagesProj_App/google-services.json
-      sed -i 's|<string name="AppName">[^<]*</string>|<string name="AppName">FableGram</string>|' TMessagesProj/src/main/res/values/strings.xml
-      sed -i 's|<string name="AppNameBeta">[^<]*</string>|<string name="AppNameBeta">FableGram Beta</string>|' TMessagesProj/src/main/res/values/strings.xml
+      - name: Apply FableGram branding
+        working-directory: telegram-source
+        run: |
+          sed -i 's/^APP_PACKAGE=.*/APP_PACKAGE=com.fablegram.messenger/' gradle.properties
+          sed -i 's/org.telegram.messenger/com.fablegram.messenger/g' TMessagesProj_App/google-services.json
+          sed -i 's|<string name="AppName">[^<]*</string>|<string name="AppName">FableGram</string>|' TMessagesProj/src/main/res/values/strings.xml
+          sed -i 's|<string name="AppNameBeta">[^<]*</string>|<string name="AppNameBeta">FableGram Beta</string>|' TMessagesProj/src/main/res/values/strings.xml
 
-  - name: Build APK
-    working-directory: telegram-source
-    run: ./gradlew :TMessagesProj_App:assembleAfatDebug --no-daemon --max-workers=2
+      - name: Build APK
+        working-directory: telegram-source
+        run: ./gradlew :TMessagesProj_App:assembleAfatDebug --no-daemon --max-workers=2
 
-  - name: Upload APK
-    uses: actions/upload-artifact@v4
-    with:
-      name: FableGram-APK
-      path: telegram-source/TMessagesProj_App/build/outputs/apk/afat/debug/app.apk
-      if-no-files-found: error
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FableGram-APK
+          path: telegram-source/TMessagesProj_App/build/outputs/apk/afat/debug/app.apk
+          if-no-files-found: error
