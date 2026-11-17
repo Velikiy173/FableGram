@@ -1,3 +1,4 @@
+
 name: Build FableGram APK
 
 on:
@@ -61,3 +62,4 @@ jobs:
           name: FableGram-APK
           path: telegram-source/TMessagesProj_App/build/outputs/apk/afat/debug/app.apk
           if-no-files-found: error
+
