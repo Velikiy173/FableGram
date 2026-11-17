@@ -30,8 +30,10 @@ jobs:
           java-version: '17'
           cache: gradle
 
-      - name: Setup Android SDK
+            - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
 
       - name: Install Android components
         run: |
