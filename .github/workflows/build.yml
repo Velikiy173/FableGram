@@ -1,3 +1,4 @@
+
 name: Build FableGram APK
 
 on:
@@ -52,20 +53,13 @@ jobs:
       - name: Build APK
         working-directory: telegram-source
         run: |
-          for attempt in 1 2 3 4 5; do
-            if ./gradlew :TMessagesProj_App:assembleAfatDebug --no-daemon --max-workers=2; then
-              break
-            fi
-            if [ "$attempt" -eq 5 ]; then
-              exit 1
-            fi
-            echo "Build failed. Waiting before retry..."
-            sleep $((attempt * 30))
-          done
+          set -e
+          ./gradlew :TMessagesProj_App:assembleAfatDebug --no-daemon --max-workers=2
 
           APK="TMessagesProj_App/build/outputs/apk/afat/debug/app.apk"
           test -s "$APK"
           unzip -t "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
           sha256sum "$APK"
 
       - name: Upload APK
