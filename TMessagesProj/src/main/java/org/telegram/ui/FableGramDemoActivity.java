@@ -19,21 +19,24 @@ public class FableGramDemoActivity extends Activity {
     private TextView status;
 
     private JSONObject post(String path, JSONObject data) throws Exception {
-        URL url = new URL("http://127.0.0.1:5000" + path);
+        URL url = new URL("http://127.0.0.1:5001" + path);
         HttpURLConnection c = (HttpURLConnection) url.openConnection();
         c.setRequestMethod("POST");
         c.setConnectTimeout(10000);
         c.setReadTimeout(10000);
         c.setDoOutput(true);
         c.setRequestProperty("Content-Type", "application/json");
-        c.getOutputStream().write(data.toString().getBytes("UTF-8"));
 
-        InputStream in = c.getResponseCode() < 400
-                ? c.getInputStream() : c.getErrorStream();
+        try (OutputStream os = c.getOutputStream()) {
+            os.write(data.toString().getBytes("UTF-8"));
+        }
 
+        int response = c.getResponseCode();
+        InputStream in = response < 400 ? c.getInputStream() : c.getErrorStream();
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         byte[] buffer = new byte[1024];
         int n;
+
         while ((n = in.read(buffer)) != -1) out.write(buffer, 0, n);
         in.close();
         c.disconnect();
@@ -48,20 +51,16 @@ public class FableGramDemoActivity extends Activity {
                 runOnUiThread(() -> {
                     if (result.optBoolean("success")) {
                         if (showCode) {
-                            status.setText("Тестовый код: " +
-                                    result.optString("demo_code") +
-                                    "\nЭто код только для FableGram Demo.");
+                            status.setText("Запрос обработан.\nПроверь Demo-бота: там будет тестовый код.");
                         } else {
-                            status.setText("Аккаунт создан!\nID: " +
-                                    result.optString("fg_id"));
+                            status.setText("Аккаунт FableGram создан!\nID: " + result.optString("fg_id"));
                         }
                     } else {
                         status.setText(result.optString("error", "Ошибка"));
                     }
                 });
             } catch (Exception e) {
-                runOnUiThread(() ->
-                        status.setText("Ошибка соединения: " + e.getMessage()));
+                runOnUiThread(() -> status.setText("Ошибка соединения: " + e.getMessage()));
             }
         });
     }
@@ -69,69 +68,64 @@ public class FableGramDemoActivity extends Activity {
     private EditText field(String hint, int type) {
         EditText e = new EditText(this);
         e.setHint(hint);
-        e.setTextColor(Color.BLACK);
-        e.setHintTextColor(Color.GRAY);
-        e.setSingleLine(true);
         e.setInputType(type);
+        e.setSingleLine(true);
+        e.setTextSize(16);
         return e;
     }
 
-    private void add(LinearLayout layout, android.view.View view) {
-        layout.addView(view, new LinearLayout.LayoutParams(
-                -1, -2));
-    }
-
     @Override
-    protected void onCreate(Bundle state) {
-        super.onCreate(state);
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(24, 30, 24, 20);
+        root.setPadding(28, 40, 28, 24);
         root.setBackgroundColor(Color.WHITE);
 
         TextView title = new TextView(this);
-        title.setText("FableGram Demo");
-        title.setTextSize(27);
-        title.setTextColor(Color.BLACK);
+        title.setText("FableGram");
+        title.setTextSize(30);
+        title.setTextColor(Color.rgb(30, 136, 229));
         title.setGravity(Gravity.CENTER);
-        add(root, title);
+        root.addView(title);
 
         TextView info = new TextView(this);
-        info.setText("Тестовая регистрация. Не является входом в Telegram.");
+        info.setText("Демо-регистрация\nЭто отдельный тестовый аккаунт FableGram, не вход в Telegram.");
+        info.setTextSize(15);
         info.setTextColor(Color.DKGRAY);
         info.setGravity(Gravity.CENTER);
-        add(root, info);
+        root.addView(info);
 
         number = field("Номер DEMO-000001", 1);
-        code = field("Тестовый код", 1);
+        code = field("Тестовый код из Demo-бота", 1);
         username = field("Имя пользователя", 1);
-        password = field("Пароль", 129);
+        password = field("Пароль (минимум 6 символов)", 129);
 
-        add(root, number);
-        add(root, code);
-        add(root, username);
-        add(root, password);
+        root.addView(number);
+        root.addView(code);
+        root.addView(username);
+        root.addView(password);
 
         Button request = new Button(this);
         request.setText("Получить тестовый код");
-        add(root, request);
+        root.addView(request);
 
         Button register = new Button(this);
         register.setText("Создать аккаунт FableGram");
-        add(root, register);
+        root.addView(register);
 
         status = new TextView(this);
-        status.setTextColor(Color.BLACK);
-        status.setTextSize(16);
-        status.setPadding(0, 20, 0, 0);
-        add(root, status);
+        status.setTextColor(Color.DKGRAY);
+        status.setTextSize(15);
+        status.setGravity(Gravity.CENTER);
+        root.addView(status);
 
         request.setOnClickListener(v -> {
             try {
-                JSONObject data = new JSONObject();
-                data.put("number", number.getText().toString().trim());
-                runRequest("/api/demo/request", data, true);
+                JSONObject j = new JSONObject();
+                j.put("number", number.getText().toString().trim());
+                runRequest("/api/demo/request", j, true);
             } catch (Exception e) {
                 status.setText("Ошибка данных");
             }
@@ -139,12 +133,12 @@ public class FableGramDemoActivity extends Activity {
 
         register.setOnClickListener(v -> {
             try {
-                JSONObject data = new JSONObject();
-                data.put("number", number.getText().toString().trim());
-                data.put("code", code.getText().toString().trim());
-                data.put("username", username.getText().toString().trim());
-                data.put("password", password.getText().toString());
-                runRequest("/api/demo/register", data, false);
+                JSONObject j = new JSONObject();
+                j.put("number", number.getText().toString().trim());
+                j.put("code", code.getText().toString().trim());
+                j.put("username", username.getText().toString().trim());
+                j.put("password", password.getText().toString());
+                runRequest("/api/demo/register", j, false);
             } catch (Exception e) {
                 status.setText("Ошибка данных");
             }
@@ -155,7 +149,7 @@ public class FableGramDemoActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        executor.shutdown();
+        executor.shutdownNow();
         super.onDestroy();
     }
 }
